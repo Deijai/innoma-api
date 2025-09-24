@@ -19,6 +19,15 @@ export class UserRoutes {
         // GET /users - Listar usuários (ADMIN, USER, DOCTOR podem ver)
         router.get("/", RoleMiddleware.staffOnly, controller.getUsers);
 
+        // GET /users/stats - Estatísticas do sistema (apenas ADMIN)
+        router.get("/stats", RoleMiddleware.adminOnly, controller.getStats);
+
+        // GET /users/doctors-by-specialty/:specialtyId - Médicos por especialidade
+        router.get("/doctors-by-specialty/:specialtyId", controller.getDoctorsBySpecialty);
+
+        // POST /users/check-email - Verificar disponibilidade de email
+        router.post("/check-email", controller.checkEmail);
+
         // GET /users/:id - Buscar usuário por ID
         router.get("/:id", RoleMiddleware.staffOnly, controller.getUser);
 

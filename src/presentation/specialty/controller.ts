@@ -3,7 +3,9 @@ import {
     SpecialtyRepository,
     CreateSpecialtyDto,
     UpdateSpecialtyDto,
-    CustomError
+    CustomError,
+    PaginationOptions,
+    SpecialtyFilters
 } from "../../domain";
 import {
     CreateSpecialty,
@@ -40,12 +42,28 @@ export class SpecialtyController {
     };
 
     getSpecialties = (req: Request, res: Response) => {
-        const { includeInactive } = req.query;
-        const isActiveOnly = includeInactive !== 'true';
+        const { isActive, search, page, limit } = req.query;
+
+        // Preparar filtros
+        const filters: SpecialtyFilters = {};
+
+        if (isActive !== undefined) {
+            filters.isActive = isActive === 'true';
+        }
+
+        if (search) {
+            filters.search = search as string;
+        }
+
+        // Preparar paginação
+        const pagination: PaginationOptions = {
+            page: parseInt(page as string) || 1,
+            limit: parseInt(limit as string) || 10
+        };
 
         new GetSpecialties(this.specialtyRepository)
-            .execute(isActiveOnly)
-            .then((data) => res.json({ specialties: data, total: data.length }))
+            .execute(filters, pagination)
+            .then((data) => res.json(data))
             .catch((error) => this.handleError(error, res));
     };
 

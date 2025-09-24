@@ -11,6 +11,7 @@ export interface UserFilters {
     roles?: string[];
     isActive?: boolean;
     search?: string; // buscar por nome ou email
+    specialties?: string[]; // filtrar por especialidades (para médicos)
 }
 
 export interface PaginatedResult<T> {

@@ -4,7 +4,10 @@ import {
     SpecialtyEntity,
     CreateSpecialtyDto,
     UpdateSpecialtyDto,
-    CustomError
+    CustomError,
+    PaginationOptions,
+    SpecialtyFilters,
+    PaginatedResult
 } from "../../domain";
 import { SpecialtyMapper } from "../mappers/specialty.mapper";
 
@@ -40,17 +43,52 @@ export class SpecialtyDatasourceImpl implements SpecialtyDatasource {
         }
     }
 
-    async getAll(isActiveOnly: boolean = true): Promise<SpecialtyEntity[]> {
+    async getAll(
+        filters?: SpecialtyFilters,
+        pagination?: PaginationOptions
+    ): Promise<PaginatedResult<SpecialtyEntity>> {
         try {
-            const filter = isActiveOnly ? { isActive: true } : {};
+            const { isActive, search } = filters || {};
+            const { page = 1, limit = 10 } = pagination || {};
 
-            const specialties = await SpecialtyModel.find(filter)
-                .populate('createdBy', 'name email')
-                .sort({ name: 1 }); // Ordenar por nome
+            // Construir filtros de busca
+            const query: any = {};
 
-            return specialties.map(specialty =>
-                SpecialtyMapper.specialtyEntityFromObject(specialty)
-            );
+            if (isActive !== undefined) {
+                query.isActive = isActive;
+            }
+
+            if (search) {
+                query.$or = [
+                    { name: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ];
+            }
+
+            // Calcular skip para paginação
+            const skip = (page - 1) * limit;
+
+            // Buscar especialidades
+            const [specialties, total] = await Promise.all([
+                SpecialtyModel.find(query)
+                    .populate('createdBy', 'name email')
+                    .sort({ name: 1 }) // Ordenar por nome
+                    .skip(skip)
+                    .limit(limit),
+                SpecialtyModel.countDocuments(query)
+            ]);
+
+            const totalPages = Math.ceil(total / limit);
+
+            return {
+                data: specialties.map(specialty =>
+                    SpecialtyMapper.specialtyEntityFromObject(specialty)
+                ),
+                total,
+                page,
+                limit,
+                totalPages
+            };
 
         } catch (error) {
             throw CustomError.internalServer();

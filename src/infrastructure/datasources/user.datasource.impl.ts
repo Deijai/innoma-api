@@ -22,6 +22,7 @@ export class UserDatasourceImpl implements UserDatasource {
             password,
             roles,
             specialties,
+            crm,
             ...otherFields
         } = createUserDto;
 
@@ -33,6 +34,18 @@ export class UserDatasourceImpl implements UserDatasource {
             }
 
             const isDoctor = roles.includes(USER_ROLES.DOCTOR);
+
+            // ✅ NOVO: Verificar se CRM já existe (apenas para DOCTOR)
+            if (isDoctor && crm) {
+                const crmExists = await UserModel.findOne({
+                    crm: crm.trim(),
+                    isActive: true
+                });
+
+                if (crmExists) {
+                    throw CustomError.badRequest("CRM already exists");
+                }
+            }
 
             // ✅ CORREÇÃO: Verificar especialidades apenas se for DOCTOR
             if (isDoctor && specialties && specialties.length > 0) {
@@ -56,9 +69,12 @@ export class UserDatasourceImpl implements UserDatasource {
                 ...otherFields
             };
 
-            // ✅ CORREÇÃO: Só adicionar specialties se for DOCTOR
+            // ✅ CORREÇÃO: Só adicionar specialties e crm se for DOCTOR
             if (isDoctor) {
                 userData.specialties = specialties || [];
+                if (crm) {
+                    userData.crm = crm.trim();
+                }
             }
 
             const user = await UserModel.create(userData);
@@ -84,7 +100,7 @@ export class UserDatasourceImpl implements UserDatasource {
         pagination?: PaginationOptions
     ): Promise<PaginatedResult<UserEntity>> {
         try {
-            const { roles, isActive, search } = filters || {};
+            const { roles, isActive, search, specialties } = filters || {};
             const { page = 1, limit = 10 } = pagination || {};
 
             // Construir filtros de busca
@@ -103,6 +119,11 @@ export class UserDatasourceImpl implements UserDatasource {
                     { name: { $regex: search, $options: 'i' } },
                     { email: { $regex: search, $options: 'i' } }
                 ];
+            }
+
+            // ✅ NOVO: Filtrar por especialidades
+            if (specialties && specialties.length > 0) {
+                query.specialties = { $in: specialties };
             }
 
             // Calcular skip para paginação
@@ -200,6 +221,19 @@ export class UserDatasourceImpl implements UserDatasource {
             const updatedRoles = roles || existingUser.roles;
             const willBeDoctor = updatedRoles.includes(USER_ROLES.DOCTOR);
             const wasDoctor = existingUser.roles.includes(USER_ROLES.DOCTOR);
+
+            // ✅ NOVO: Verificar se CRM já existe (apenas para DOCTOR)
+            if (willBeDoctor && crm && crm !== existingUser.crm) {
+                const crmExists = await UserModel.findOne({
+                    crm: crm.trim(),
+                    _id: { $ne: id },
+                    isActive: true
+                });
+
+                if (crmExists) {
+                    throw CustomError.badRequest("CRM already exists");
+                }
+            }
 
             // ✅ CORREÇÃO: Validar especialidades baseado no role
             if (willBeDoctor) {

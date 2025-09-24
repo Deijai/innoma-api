@@ -4,6 +4,9 @@ import {
     SpecialtyEntity,
     CreateSpecialtyDto,
     UpdateSpecialtyDto,
+    PaginationOptions,
+    SpecialtyFilters,
+    PaginatedResult
 } from "../../domain";
 
 export class SpecialtyRepositoryImpl implements SpecialtyRepository {
@@ -13,8 +16,11 @@ export class SpecialtyRepositoryImpl implements SpecialtyRepository {
         return this.datasource.create(createSpecialtyDto, createdBy);
     }
 
-    getAll(isActiveOnly?: boolean): Promise<SpecialtyEntity[]> {
-        return this.datasource.getAll(isActiveOnly);
+    getAll(
+        filters?: SpecialtyFilters,
+        pagination?: PaginationOptions
+    ): Promise<PaginatedResult<SpecialtyEntity>> {
+        return this.datasource.getAll(filters, pagination);
     }
 
     getById(id: string): Promise<SpecialtyEntity | null> {

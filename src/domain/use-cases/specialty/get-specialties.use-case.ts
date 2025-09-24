@@ -1,16 +1,41 @@
-import { SpecialtyRepository, SpecialtyEntity, CustomError } from "../..";
+import {
+    SpecialtyRepository,
+    CustomError,
+    PaginationOptions,
+    SpecialtyFilters,
+    PaginatedResult,
+    SpecialtyEntity
+} from "../..";
 
 interface GetSpecialtiesUseCase {
-    execute(isActiveOnly?: boolean): Promise<SpecialtyEntity[]>;
+    execute(
+        filters?: SpecialtyFilters,
+        pagination?: PaginationOptions
+    ): Promise<PaginatedResult<SpecialtyEntity>>;
 }
 
 export class GetSpecialties implements GetSpecialtiesUseCase {
     constructor(private readonly specialtyRepository: SpecialtyRepository) { }
 
-    async execute(isActiveOnly: boolean = true): Promise<SpecialtyEntity[]> {
+    async execute(
+        filters?: SpecialtyFilters,
+        pagination?: PaginationOptions
+    ): Promise<PaginatedResult<SpecialtyEntity>> {
         try {
-            const specialties = await this.specialtyRepository.getAll(isActiveOnly);
-            return specialties;
+            // Definir valores padrão
+            const defaultPagination: PaginationOptions = {
+                page: 1,
+                limit: 10,
+                ...pagination
+            };
+
+            const defaultFilters: SpecialtyFilters = {
+                isActive: true, // Por padrão, mostrar apenas ativas
+                ...filters
+            };
+
+            const result = await this.specialtyRepository.getAll(defaultFilters, defaultPagination);
+            return result;
         } catch (error) {
             if (error instanceof CustomError) {
                 throw error;

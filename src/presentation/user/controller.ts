@@ -12,7 +12,10 @@ import {
     GetUsers,
     GetUser,
     UpdateUser,
-    DeleteUser
+    DeleteUser,
+    GetDoctorsBySpecialty,
+    GetStats,
+    CheckEmail
 } from "../../domain/use-cases/user";
 
 export class UserController {
@@ -50,7 +53,7 @@ export class UserController {
     };
 
     getUsers = (req: Request, res: Response) => {
-        const { roles, isActive, search, page, limit } = req.query;
+        const { roles, isActive, search, specialties, page, limit } = req.query;
 
         // Preparar filtros
         const filters: UserFilters = {};
@@ -62,6 +65,10 @@ export class UserController {
         }
         if (search) {
             filters.search = search as string;
+        }
+        // ✅ NOVO: Filtro por especialidades
+        if (specialties) {
+            filters.specialties = Array.isArray(specialties) ? specialties as string[] : [specialties as string];
         }
 
         // Preparar paginação
@@ -108,6 +115,42 @@ export class UserController {
 
         new DeleteUser(this.userRepository)
             .execute(id, currentUserRoles, currentUserId)
+            .then((data) => res.json(data))
+            .catch((error) => this.handleError(error, res));
+    };
+
+    // ✅ NOVO: Buscar médicos por especialidade
+    getDoctorsBySpecialty = (req: Request, res: Response) => {
+        const { specialtyId } = req.params;
+        const { page, limit } = req.query;
+
+        const pagination: PaginationOptions = {
+            page: parseInt(page as string) || 1,
+            limit: parseInt(limit as string) || 10
+        };
+
+        new GetDoctorsBySpecialty(this.userRepository)
+            .execute(specialtyId, pagination)
+            .then((data) => res.json(data))
+            .catch((error) => this.handleError(error, res));
+    };
+
+    // ✅ NOVO: Estatísticas do sistema
+    getStats = (req: Request, res: Response) => {
+        const { roles: currentUserRoles } = this.getCurrentUserInfo(req);
+
+        new GetStats()
+            .execute(currentUserRoles)
+            .then((data) => res.json(data))
+            .catch((error) => this.handleError(error, res));
+    };
+
+    // ✅ NOVO: Verificar disponibilidade de email
+    checkEmail = (req: Request, res: Response) => {
+        const { email } = req.body;
+
+        new CheckEmail(this.userRepository)
+            .execute(email)
             .then((data) => res.json(data))
             .catch((error) => this.handleError(error, res));
     };
